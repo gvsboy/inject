@@ -257,3 +257,8 @@ var HAS_LOCAL_STORAGE = (function () {
   }
 })();
 
+/**
+ * this regex is used to strip leading slashes
+ * @constant
+ */
+var LEADING_SLASHES_REGEX = /^\/+/g;
