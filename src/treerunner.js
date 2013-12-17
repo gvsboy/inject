@@ -1,4 +1,4 @@
-var TreeRunner = Fiber.extend(function () {
+var TreeRunner = Fiber.extend(function() {
   /**
    * Perform a function on the next-tick, faster than setTimeout
    * Taken from stagas / public domain
@@ -187,9 +187,11 @@ var TreeRunner = Fiber.extend(function () {
      * A tree runner, given a node, is responsible for the download and execution
      * of the root node and any children it encounters.
      * @constructs TreeRunner
+     * @param {Object} env - The context to run in
      * @param {TreeNode} root - a Tree Node at the root of this tree
      */
-    init: function(root) {
+    init: function(env, root) {
+      this.env = env;
       this.root = root;
     },
     

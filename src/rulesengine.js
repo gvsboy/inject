@@ -25,10 +25,24 @@ governing permissions and limitations under the License.
 
 var RulesEngine = Fiber.extend(function() {
 
+  /**
+   * Return the "base" directory of a given path
+   * @method RulesEngine.basedir
+   * @private
+   * @param {String} dir - the directory or path to get the basedir of
+   */
+  var basedir = function(dir) {
+    dir = dir.split('/');
+    dir.pop();
+    dir = dir.join('/');
+    return dir;
+  };
+
   return {
     /**
      * Create a RulesEngine Object
      * @constructs RulesEngine
+     * @param {Object} env - The context to run in
      */
     init: function (env) {
       this.env = env;
@@ -303,19 +317,6 @@ var RulesEngine = Fiber.extend(function() {
       var isMatch = false;
       var matches;
       var fn;
-
-      /**
-       * Return the "base" directory of a given path
-       * @method RulesEngine.basedir
-       * @private
-       * @param {String} dir - the directory or path to get the basedir of
-       */
-      var basedir = function(dir) {
-        dir = dir.split('/');
-        dir.pop();
-        dir = dir.join('/');
-        return dir;
-      };
 
       for (i; i < len; i++) {
         matches = rules[i].matches;

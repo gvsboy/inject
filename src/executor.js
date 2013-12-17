@@ -26,8 +26,9 @@ governing permissions and limitations under the License.
  * references.
  * @file
  **/
-var Executor;
-(function() {
+var Executor  = Fiber.extend(function() {
+
+  var functionCount = 0;
   
   //Cache to store errors thrown by failed modules(indexed by moduleId)
   //getModule uses this to return the right error when asked for a broken module
@@ -349,248 +350,245 @@ var Executor;
     }
   }
 
-  var AsStatic = Fiber.extend(function() {
-    var functionCount = 0;
-    return {
-      /**
-       * Create the executor and initialize its caches
-       * @constructs Executor
-       */
-      init : function() {
-        this.clearCaches();
-      },
+  return {
+    /**
+     * Create the executor and initialize its caches
+     * @constructs Executor
+     * @param {Object} env - The context to run in
+     */
+    init : function(env) {
+      this.env = env;
+      this.clearCaches();
+    },
 
-      /**
-       * Clear all the caches for the executor
-       * @method Executor.clearCaches
-       * @public
-       */
-      clearCaches : function() {
-        // cache of resolved exports
-        this.cache = {};
-        
-        // any modules that had errors
-        this.errors = {};
-
-        // the stack of AMD define functions, because they "could" be anonymous
-        this.anonymousAMDStack = [];
-      },
-
-      /**
-       * Define the executing module by a moduleId and path.
-       * when using AMD style defines with just CommonJS
-       * wrappers, it's important to know what module we are
-       * currently trying to run.
-       * @method Executor.defineExecutingModuleAs
-       * @param {string} moduleId - the module ID being ran
-       * @param {string} path - the path for the current module
-       * @public
-       */
-      defineExecutingModuleAs : function(moduleId, path) {
-        return this.anonymousAMDStack.push({
-          id : moduleId,
-          path : path
-        });
-      },
-
-      /**
-       * Remove the currently executing module from the define stack
-       * @method Executor.undefineExecutingModule
-       * @public
-       */
-      undefineExecutingModule : function() {
-        return this.anonymousAMDStack.pop();
-      },
-
-      /**
-       * Get the current executing AMD module
-       * @method Executor.getCurrentExecutingAMD
-       * @public
-       * @returns {object} the id and path of the current module
-       */
-      getCurrentExecutingAMD : function() {
-        return this.anonymousAMDStack[this.anonymousAMDStack.length - 1];
-      },
-
-      /**
-       * Get the cached version of a module ID, accounting
-       * for any possible aliases. If an alias exists,
-       * the cache is also updated
-       * @method Executor.getFromCache
-       * @param {String} idAlias - an ID or alias to get
-       * @returns {Object} module at the ID or alias
-       */
-      getFromCache : function(idAlias) {
-        var alias = RulesEngine.getOriginalName(idAlias);
-        var err;
-        var errorMessage;
-        var e;
-        var module;
-        var stackMode;
-        var mainTrace;
-        var offsetTrace;
-        var mainTracePieces;
-        var offsetTracePieces;
-        var actualLine;
-        var actualChar;
-        
-        if (HAS_OWN_PROPERTY.call(this.errors, idAlias) && this.errors[idAlias]) {
-          err = this.errors[idAlias];
-        }
-        else if (alias && HAS_OWN_PROPERTY.call(this.errors, alias) && this.errors[alias]) {
-          err = this.errors[alias];
-        }
-        
-        // check by moduleID
-        if (this.cache[idAlias]) {
-          module = this.cache[idAlias];
-        }
-        else if(alias && this.cache[alias]) {
-          this.cache[idAlias] = this.cache[alias];
-          module = this.cache[alias];
-        }
-        
-        if (err) {
-          errorMessage = 'module ' + idAlias + ' failed to load successfully';
-          errorMessage += (err) ? ': ' + err.message : '';
-          
-          // building a better stack trace
-          if (module && module.__error_line) {
-            // runtime errors need better stack trace
-            stackMode = stacknorm.mode(err);
-            mainTrace = stacknorm[stackMode](err);
-            offsetTrace = stacknorm[stackMode](module.__error_line);
-            mainTracePieces = mainTrace[0].split(/:/);
-            offsetTracePieces = offsetTrace[0].split(/:/);
-            
-            actualLine =  mainTracePieces[mainTracePieces.length - 2] - offsetTracePieces[offsetTracePieces.length - 2];
-            actualLine = actualLine - 1;
-            
-            actualChar = mainTracePieces[mainTracePieces.length - 1];
-            
-            errorMessage = errorMessage + ' @ Line: ' + actualLine + ' Column: ' + actualChar + ' ';
-          }
-          
-          err.message = errorMessage;
-          
-          throw err;
-        }
-        
-        return module || null;
-      },
-
-      /**
-       * Create a module if it doesn't exist, and store it locally
-       * @method Executor.createModule
-       * @param {string} moduleId - the module identifier
-       * @param {string} path - the module's proposed URL
-       * @public
-       * @returns {Object} - a module object representation
-       */
-      createModule : function(moduleId, qualifiedId, path) {
-        var module;
-        
-        if (!(/\!/.test(moduleId)) && this.cache[moduleId]) {
-          this.cache[qualifiedId] = this.cache[moduleId];
-          return this.cache[moduleId];
-        }
-        
-        module = {};
-        module.id = moduleId || null;
-        module.qualifiedId = qualifiedId || null;
-        module.uri = path || null;
-        module.exports = {};
-        module.exec = false;
-        module.setExports = function(xobj) {
-          var name;
-          for (name in module.exports) {
-            if (Object.hasOwnProperty.call(module.exports, name)) {
-              debugLog('cannot setExports when exports have already been set. setExports skipped');
-              return;
-            }
-          }
-          switch (typeof(xobj)) {
-            case 'object':
-              // objects are enumerated and added
-              for (name in xobj) {
-                module.exports[name] = xobj[name];
-              }
-              break;
-            case 'function':
-              module.exports = xobj;
-              break;
-            default:
-              // non objects are written directly, blowing away exports
-              module.exports = xobj;
-              break;
-          }
-        };
-        
-        // Important AMD item. Do not store any IDs with an !
-        if (!(/\!/.test(moduleId))) {
-          this.cache[moduleId] = module;
-        }
-        
-        this.cache[qualifiedId] = module;
-        
-        return module;
-      },
-
-      /**
-       * Get the module matching the specified Identifier
-       * @method Executor.getModule
-       * @param {string} moduleId - the module ID
-       * @public
-       * @returns {object} the module at the identifier
-       */
-      getModule : function(moduleId, undef) {
-        return this.getFromCache(moduleId) || undef;
-      },
+    /**
+     * Clear all the caches for the executor
+     * @method Executor.clearCaches
+     * @public
+     */
+    clearCaches : function() {
+      // cache of resolved exports
+      this.cache = {};
       
-      /**
-       * Build a sandbox around and execute a module
-       * @method Executor.runModule
-       * @param {object} module - the module
-       * @param {string} code - the code to execute
-       * @returns {Object} a module object
-       * @public
-       */
-      runModule : function(module, code) {
-        debugLog('Executor', 'executing ' + module.uri);
+      // any modules that had errors
+      this.errors = {};
 
-        var functionId = 'exec' + (functionCount++);
-        var localMeta = {};
-        context.Inject.INTERNAL.executor[functionId] = localMeta;
-        
-        localMeta.module = module;
-        localMeta.require = RequireContext.createRequire(module.id, module.uri, module.qualifiedId);
-        localMeta.define = RequireContext.createInlineDefine(module, localMeta.require);
+      // the stack of AMD define functions, because they "could" be anonymous
+      this.anonymousAMDStack = [];
+    },
 
-        function swapUnderscoreVars(text) {
-          return text.replace(/__MODULE_ID__/g, module.id)
-            .replace(/__MODULE_URI__/g, module.uri)
-            .replace(/__FUNCTION_ID__/g, functionId)
-            .replace(/__INJECT_NS__/g, NAMESPACE);
-        }
+    /**
+     * Define the executing module by a moduleId and path.
+     * when using AMD style defines with just CommonJS
+     * wrappers, it's important to know what module we are
+     * currently trying to run.
+     * @method Executor.defineExecutingModuleAs
+     * @param {string} moduleId - the module ID being ran
+     * @param {string} path - the path for the current module
+     * @public
+     */
+    defineExecutingModuleAs : function(moduleId, path) {
+      return this.anonymousAMDStack.push({
+        id : moduleId,
+        path : path
+      });
+    },
 
-        var header = swapUnderscoreVars(commonJSHeader);
-        var footer = swapUnderscoreVars(commonJSFooter);
-        var runCommand = ([header, ';', code, footer]).join('\n');
+    /**
+     * Remove the currently executing module from the define stack
+     * @method Executor.undefineExecutingModule
+     * @public
+     */
+    undefineExecutingModule : function() {
+      return this.anonymousAMDStack.pop();
+    },
 
-        executeJavaScriptModule(runCommand, functionId);
+    /**
+     * Get the current executing AMD module
+     * @method Executor.getCurrentExecutingAMD
+     * @public
+     * @returns {object} the id and path of the current module
+     */
+    getCurrentExecutingAMD : function() {
+      return this.anonymousAMDStack[this.anonymousAMDStack.length - 1];
+    },
 
-        // if a global error object was created
-        if (module.__error) {
-          // context[NAMESPACE].clearCache();
-          // exit early, this module is broken
-          debugLog('Executor', 'broken', module.id, module.uri, module.exports);
-          this.errors[module.id] = module.__error;
-        }
-
-        debugLog('Executor', 'executed', module.id, module.uri, module.exports);
+    /**
+     * Get the cached version of a module ID, accounting
+     * for any possible aliases. If an alias exists,
+     * the cache is also updated
+     * @method Executor.getFromCache
+     * @param {String} idAlias - an ID or alias to get
+     * @returns {Object} module at the ID or alias
+     */
+    getFromCache : function(idAlias) {
+      var alias = RulesEngine.getOriginalName(idAlias);
+      var err;
+      var errorMessage;
+      var e;
+      var module;
+      var stackMode;
+      var mainTrace;
+      var offsetTrace;
+      var mainTracePieces;
+      var offsetTracePieces;
+      var actualLine;
+      var actualChar;
+      
+      if (HAS_OWN_PROPERTY.call(this.errors, idAlias) && this.errors[idAlias]) {
+        err = this.errors[idAlias];
       }
-    };
-  });
-  Executor = new AsStatic();
-})();
+      else if (alias && HAS_OWN_PROPERTY.call(this.errors, alias) && this.errors[alias]) {
+        err = this.errors[alias];
+      }
+      
+      // check by moduleID
+      if (this.cache[idAlias]) {
+        module = this.cache[idAlias];
+      }
+      else if(alias && this.cache[alias]) {
+        this.cache[idAlias] = this.cache[alias];
+        module = this.cache[alias];
+      }
+      
+      if (err) {
+        errorMessage = 'module ' + idAlias + ' failed to load successfully';
+        errorMessage += (err) ? ': ' + err.message : '';
+        
+        // building a better stack trace
+        if (module && module.__error_line) {
+          // runtime errors need better stack trace
+          stackMode = stacknorm.mode(err);
+          mainTrace = stacknorm[stackMode](err);
+          offsetTrace = stacknorm[stackMode](module.__error_line);
+          mainTracePieces = mainTrace[0].split(/:/);
+          offsetTracePieces = offsetTrace[0].split(/:/);
+          
+          actualLine =  mainTracePieces[mainTracePieces.length - 2] - offsetTracePieces[offsetTracePieces.length - 2];
+          actualLine = actualLine - 1;
+          
+          actualChar = mainTracePieces[mainTracePieces.length - 1];
+          
+          errorMessage = errorMessage + ' @ Line: ' + actualLine + ' Column: ' + actualChar + ' ';
+        }
+        
+        err.message = errorMessage;
+        
+        throw err;
+      }
+      
+      return module || null;
+    },
 
+    /**
+     * Create a module if it doesn't exist, and store it locally
+     * @method Executor.createModule
+     * @param {string} moduleId - the module identifier
+     * @param {string} path - the module's proposed URL
+     * @public
+     * @returns {Object} - a module object representation
+     */
+    createModule : function(moduleId, qualifiedId, path) {
+      var module;
+      
+      if (!(/\!/.test(moduleId)) && this.cache[moduleId]) {
+        this.cache[qualifiedId] = this.cache[moduleId];
+        return this.cache[moduleId];
+      }
+      
+      module = {};
+      module.id = moduleId || null;
+      module.qualifiedId = qualifiedId || null;
+      module.uri = path || null;
+      module.exports = {};
+      module.exec = false;
+      module.setExports = function(xobj) {
+        var name;
+        for (name in module.exports) {
+          if (Object.hasOwnProperty.call(module.exports, name)) {
+            debugLog('cannot setExports when exports have already been set. setExports skipped');
+            return;
+          }
+        }
+        switch (typeof(xobj)) {
+          case 'object':
+            // objects are enumerated and added
+            for (name in xobj) {
+              module.exports[name] = xobj[name];
+            }
+            break;
+          case 'function':
+            module.exports = xobj;
+            break;
+          default:
+            // non objects are written directly, blowing away exports
+            module.exports = xobj;
+            break;
+        }
+      };
+      
+      // Important AMD item. Do not store any IDs with an !
+      if (!(/\!/.test(moduleId))) {
+        this.cache[moduleId] = module;
+      }
+      
+      this.cache[qualifiedId] = module;
+      
+      return module;
+    },
+
+    /**
+     * Get the module matching the specified Identifier
+     * @method Executor.getModule
+     * @param {string} moduleId - the module ID
+     * @public
+     * @returns {object} the module at the identifier
+     */
+    getModule : function(moduleId, undef) {
+      return this.getFromCache(moduleId) || undef;
+    },
+    
+    /**
+     * Build a sandbox around and execute a module
+     * @method Executor.runModule
+     * @param {object} module - the module
+     * @param {string} code - the code to execute
+     * @returns {Object} a module object
+     * @public
+     */
+    runModule : function(module, code) {
+      debugLog('Executor', 'executing ' + module.uri);
+
+      var functionId = 'exec' + (functionCount++);
+      var localMeta = {};
+      context.Inject.INTERNAL.executor[functionId] = localMeta;
+      
+      localMeta.module = module;
+      localMeta.require = RequireContext.createRequire(module.id, module.uri, module.qualifiedId);
+      localMeta.define = RequireContext.createInlineDefine(module, localMeta.require);
+
+      function swapUnderscoreVars(text) {
+        return text.replace(/__MODULE_ID__/g, module.id)
+          .replace(/__MODULE_URI__/g, module.uri)
+          .replace(/__FUNCTION_ID__/g, functionId)
+          .replace(/__INJECT_NS__/g, NAMESPACE);
+      }
+
+      var header = swapUnderscoreVars(commonJSHeader);
+      var footer = swapUnderscoreVars(commonJSFooter);
+      var runCommand = ([header, ';', code, footer]).join('\n');
+
+      executeJavaScriptModule(runCommand, functionId);
+
+      // if a global error object was created
+      if (module.__error) {
+        // context[NAMESPACE].clearCache();
+        // exit early, this module is broken
+        debugLog('Executor', 'broken', module.id, module.uri, module.exports);
+        this.errors[module.id] = module.__error;
+      }
+
+      debugLog('Executor', 'executed', module.id, module.uri, module.exports);
+    }
+  };
+});

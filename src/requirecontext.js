@@ -23,17 +23,20 @@ governing permissions and limitations under the License.
  * run (require.run), and define.
  * @file
 **/
-var RequireContext = Fiber.extend(function () {
+var RequireContext = Fiber.extend(function() {
+
   return {
     /**
      * Creates a new RequireContext
      * @constructs RequireContext
+     * @param {object} env - The context to run in
      * @param {String} id - the current module ID for this context
      * @param {String} path - the current module URL for this context
      * @param {String} qualifiedId - a (from)-joined collection of paths
      * @public
      */
-    init: function (id, path, qualifiedId) {
+    init: function (env, id, path, qualifiedId) {
+      this.env = env;
       this.id = id || null;
       this.path = path || null;
       this.qualifiedId = qualifiedId || null;
