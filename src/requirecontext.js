@@ -59,10 +59,10 @@ var RequireContext = Fiber.extend(function() {
      * @returns {String} the path for the current context
      */
     getPath: function () {
-      if (!userConfig.moduleRoot) {
+      if (!this.env.moduleRoot) {
         throw new Error('moduleRoot must be defined. Please use Inject.setModuleRoot()');
       }
-      return this.path || userConfig.moduleRoot;
+      return this.path || this.env.moduleRoot;
     },
 
     /**

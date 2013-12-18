@@ -385,6 +385,7 @@ var RulesEngine = Fiber.extend(function() {
       var isMatch = false;
       var matches;
       var fn;
+      var env = this.env;
 
       // deprecated
       var deprecatedPointcuts = [];
@@ -420,7 +421,7 @@ var RulesEngine = Fiber.extend(function() {
       }
 
       // if no module root, freak out
-      if (!userConfig.moduleRoot && typeof console != 'undefined' && typeof console.log == 'function') {
+      if (!env.moduleRoot && typeof console != 'undefined' && typeof console.log == 'function') {
         console.log('Without moduleRoot defined, Inject will default to the URL of the current page. This may cause unexpected behavior');
       }
 
@@ -438,7 +439,7 @@ var RulesEngine = Fiber.extend(function() {
       // if there is no basedir function from the user, we need to slice off the last segment of relativeTo
       // otherwise, we can use the baseDir() function
       // otherwise (no relativeTo) it is relative to the moduleRoot
-      if (relativeTo && !userConfig.baseDir) {
+      if (relativeTo && !env.baseDir) {
         relativeTo = relativeTo.replace(PROTOCOL_REGEX, PROTOCOL_EXPANDED_STRING).split('/');
         if (relativeTo[relativeTo.length - 1] && relativeTo.length !== 1) {
           // not ending in /
@@ -447,10 +448,10 @@ var RulesEngine = Fiber.extend(function() {
         relativeTo = relativeTo.join('/').replace(PROTOCOL_EXPANDED_REGEX, PROTOCOL_STRING);
       }
       else if (relativeTo) {
-        relativeTo = userConfig.baseDir(relativeTo);
+        relativeTo = env.baseDir(relativeTo);
       }
-      else if (userConfig.moduleRoot) {
-        relativeTo = userConfig.moduleRoot;
+      else if (env.moduleRoot) {
+        relativeTo = env.moduleRoot;
       }
       else {
         relativeTo = location.pathname;
@@ -478,7 +479,7 @@ var RulesEngine = Fiber.extend(function() {
       lastPath = lastPath.replace(PROTOCOL_EXPANDED_REGEX, PROTOCOL_STRING);
 
       // add a suffix if required
-      if (!noSuffix && userConfig.useSuffix && !FILE_SUFFIX_REGEX.test(lastPath)) {
+      if (!noSuffix && env.useSuffix && !FILE_SUFFIX_REGEX.test(lastPath)) {
         lastPath = lastPath + BASIC_FILE_SUFFIX;
       }
 
