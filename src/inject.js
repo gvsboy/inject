@@ -24,6 +24,7 @@ governing permissions and limitations under the License.
     context.require = ic.require;
     context.define = ic.define;
     context.Inject = ic.Inject;
+    context.Inject.setReachablePath('Inject');
     context.Inject.version = version;
   }
   

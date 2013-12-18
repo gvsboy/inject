@@ -41,19 +41,17 @@ var InjectContext;
           analyzer = new components.Analyzer();
         }
         
-        // configuration (shortcut using references)
-        this.config = {
-          moduleRoot: baseUrl,
-          suffixes: true,
-          sourceMaps: false
-        };
-      
-        // commonJS and AMD apis
-        this.api = {};
-      
-        // create all players used in this interaction
+        // where internal variables are stored
+        this._ = {};
+        
+        // create all environment objects used in this interaction
         this.env = {
-          config: this.config
+          config: {
+            moduleRoot: baseUrl,
+            suffixes: true,
+            sourceMaps: false,
+            reachablePath: null
+          }
         };
         this.env.analyzer = analyzer;
         this.env.communicator = communicator;
@@ -67,8 +65,8 @@ var InjectContext;
         }
         else {
           // create the require/define calls as part of the API
-          this.api.require = components.RequireContext.createRequire(this.env, baseUrl);
-          this.api.define = components.RequireContext.createDefine(this.env, baseUrl);
+          this.require = components.RequireContext.createRequire(this.env, baseUrl);
+          this.define = components.RequireContext.createDefine(this.env, baseUrl);
         }
 
       },
@@ -85,10 +83,10 @@ var InjectContext;
        * @return this
        */
       setModuleRoot: function(url) {
-        this.config.moduleRoot = url;
+        this.env.config.moduleRoot = url;
         this.env.requireContext = new components.RequireContext(this.env);
-        this.api.require = components.RequireContext.createRequire(this.env, url);
-        this.api.define = components.RequireContext.createDefine(this.env, url);
+        this.require = components.RequireContext.createRequire(this.env, url);
+        this.define = components.RequireContext.createDefine(this.env, url);
         return this;
       },
 
@@ -100,11 +98,24 @@ var InjectContext;
        */
       setCrossDomain: function(xdInfo) {
         if (typeof xdInfo == 'string') {
-          this.config.relayFile = xdInfo;
+          this.env.config.relayFile = xdInfo;
         }
         else {
-          this.config.relayFile = xdInfo.relayFile;
+          this.env.config.relayFile = xdInfo.relayFile;
         }
+        return this;
+      },
+      
+      /**
+       * Set the reachable path for this Inject instance. Every Inject instance needs to be
+       * reachable from the window scope. This is so the eval() step is able to properly
+       * register AMD modules and record functions into cache
+       * @method InjectContext#setReachablePath
+       * @param {String} path - the path from the window object from which to access this
+       * @return this
+       */
+      setReachablePath: function(path) {
+        this.env.config.reachablePath = path;
         return this;
       },
 
@@ -117,7 +128,7 @@ var InjectContext;
        * @return this
        */
       disableSuffixes: function() {
-        this.config.suffixes = false;
+        this.env.config.suffixes = false;
         return this;
       },
     
@@ -130,7 +141,7 @@ var InjectContext;
        * @return this
        */
       enableSuffixes: function() {
-        this.config.suffixes = true;
+        this.env.config.suffixes = true;
         return this;
       },
       
@@ -145,7 +156,7 @@ var InjectContext;
        * @return this
        */
       setExpires: function(seconds) {
-        this.config.expires = seconds || 0;
+        this.env.config.expires = seconds || 0;
         return this;
       },
       
@@ -227,7 +238,7 @@ var InjectContext;
        * @return this
        */
       enableAMDPlugins: function() {
-        this.config.amdPlugins = true;
+        this.env.config.amdPlugins = true;
         amdPluginBreakout(this.env);
         return this;
       },
@@ -294,7 +305,7 @@ var InjectContext;
        * @return this
        */
       enableSourceUrls: function() {
-        this.config.sourceUrls = true;
+        this.env.config.sourceUrls = true;
         return this;
       },
       
@@ -306,7 +317,7 @@ var InjectContext;
        * @return this
        */
       disableSourceUrls: function() {
-        this.config.sourceUrls = false;
+        this.env.config.sourceUrls = false;
         return this;
       },
     
@@ -335,8 +346,8 @@ var InjectContext;
 InjectContext.createContext = function(baseUrl) {
   var ic = new InjectContext(baseUrl);
   return {
-    require: ic.api.require,
-    define: ic.api.define,
+    require: ic.require,
+    define: ic.define,
     Inject: ic
   };
 };

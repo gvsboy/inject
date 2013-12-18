@@ -286,7 +286,7 @@ var Executor  = Fiber.extend(function() {
    * @param {Object} options - a collection of options
    */
   function executeJavaScriptModule(code, functionId) {
-    var meta = context.Inject.INTERNAL.executor[functionId];
+    var meta = resolveScope(self.env.config.reachablePath)._.executor[functionId];
     var module = meta.module;
     var failed = false;
     var sourceString = IS_IE ? '' : '//@ sourceURL=' + module.uri;
@@ -318,7 +318,7 @@ var Executor  = Fiber.extend(function() {
     // We only reach here if there are no parse errors
     // We can now evaluate using either the eval()
     // method or just running the function we built.
-    // if there is not a registered function in the INTERNAL namespace, there
+    // if there is not a registered function in the _ namespace, there
     // must have been a syntax error. Firefox mandates an eval to expose it, so
     // we use that as the least common denominator
     if (userConfig.debug.sourceMap) {
@@ -341,8 +341,8 @@ var Executor  = Fiber.extend(function() {
       // into result.__error internally for us from the commonjs harness
       // NOTE: these all receive "-1" due to the semicolon auto added by the Executor at the end of
       // the preamble.
-      // __EXCEPTION__.lineNumber - Inject.INTERNAL.modules.exec2.__error_line.lineNumber - 1
-      context.Inject.INTERNAL.executor[functionId].fn();
+      // __EXCEPTION__.lineNumber - Inject._.modules.exec2.__error_line.lineNumber - 1
+      resolveScope(self.env.config.reachablePath)._.executor[functionId].fn();
 
       if (module.__error) {
         module.__error.message = 'Runtime error in ' + module.id + '(' + module.uri + ') ' + module.__error.message;
@@ -561,7 +561,7 @@ var Executor  = Fiber.extend(function() {
 
       var functionId = 'exec' + (functionCount++);
       var localMeta = {};
-      context.Inject.INTERNAL.executor[functionId] = localMeta;
+      resolveScope(self.env.config.reachablePath)._.executor[functionId] = localMeta;
       
       localMeta.module = module;
       localMeta.require = RequireContext.createRequire(module.id, module.uri, module.qualifiedId);
@@ -571,7 +571,7 @@ var Executor  = Fiber.extend(function() {
         return text.replace(/__MODULE_ID__/g, module.id)
           .replace(/__MODULE_URI__/g, module.uri)
           .replace(/__FUNCTION_ID__/g, functionId)
-          .replace(/__INJECT_NS__/g, NAMESPACE);
+          .replace(/__REACHABLE_PATH__/g, self.env.config.reachablePath);
       }
 
       var header = swapUnderscoreVars(commonJSHeader);

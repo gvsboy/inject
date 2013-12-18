@@ -24,6 +24,7 @@ governing permissions and limitations under the License.
     context.require = ic.require;
     context.define = ic.define;
     context.Inject = ic.Inject;
+    context.Inject.setReachablePath('Inject');
     context.Inject.version = version;
   }
   
@@ -51,10 +52,9 @@ governing permissions and limitations under the License.
 /**
  * Below are the "sandboxing" wrappers for our commonJS implementation
  * we reach in to the inject namespace (default "Inject"), into the
- * INTERNAL object, which contains methods reachable during the eval.
+ * _ object, which contains methods reachable during the eval.
  * Markers in the file for dynamic content are identified with
- * __DOUBLE_UNDERSCORES__, while internal variables are marked with
- * __singleUnderscores
+ * __DOUBLE_UNDERSCORES__
  * @file This file contains the commonJS header and footers
 **/
 
@@ -65,13 +65,13 @@ governing permissions and limitations under the License.
     @global
 */
 var commonJSHeader = (['',
-  '__INJECT_NS__.INTERNAL.executor.__FUNCTION_ID__.fn = function() {',
+  '__REACHABLE_PATH__._.executor.__FUNCTION_ID__.fn = function() {',
   '  with (window) {',
-  '    __INJECT_NS__.INTERNAL.executor.__FUNCTION_ID__.innerFn = function() {',
+  '    __REACHABLE_PATH__._.executor.__FUNCTION_ID__.innerFn = function() {',
   '      // id: __MODULE_ID__ uri: __MODULE_URI__',
-  '      var module = __INJECT_NS__.INTERNAL.executor.__FUNCTION_ID__.module,',
-  '          require = __INJECT_NS__.INTERNAL.executor.__FUNCTION_ID__.require,',
-  '          define = __INJECT_NS__.INTERNAL.executor.__FUNCTION_ID__.define,',
+  '      var module = __REACHABLE_PATH__._.executor.__FUNCTION_ID__.module,',
+  '          require = __REACHABLE_PATH__._.executor.__FUNCTION_ID__.require,',
+  '          define = __REACHABLE_PATH__._.executor.__FUNCTION_ID__.define,',
   '          exports = module.exports;',  
   '      try{module.undefined_function();}catch(e){module.__error_line = e;}' // NOTE: Must be on one line for clean error reporting
   ]).join('\n');
@@ -83,16 +83,16 @@ var commonJSHeader = (['',
     @global
 */
 var commonJSFooter = (['',
-  '      __INJECT_NS__.INTERNAL.executor.__FUNCTION_ID__.module = module;',
+  '      __REACHABLE_PATH__._.executor.__FUNCTION_ID__.module = module;',
   '    };',
-  '    __INJECT_NS__.INTERNAL.defineExecutingModuleAs("__MODULE_ID__", "__MODULE_URI__");',
+  '    __REACHABLE_PATH__._.defineExecutingModuleAs("__MODULE_ID__", "__MODULE_URI__");',
   '    try {',
-  '      __INJECT_NS__.INTERNAL.executor.__FUNCTION_ID__.innerFn.call(__INJECT_NS__.INTERNAL.executor.__FUNCTION_ID__.module);',
+  '      __REACHABLE_PATH__._.executor.__FUNCTION_ID__.innerFn.call(__REACHABLE_PATH__._.executor.__FUNCTION_ID__.module);',
   '    }',
   '    catch (__EXCEPTION__) {',
-  '      __INJECT_NS__.INTERNAL.executor.__FUNCTION_ID__.module.__error = __EXCEPTION__;',
+  '      __REACHABLE_PATH__._.executor.__FUNCTION_ID__.module.__error = __EXCEPTION__;',
   '    }',
-  '    __INJECT_NS__.INTERNAL.undefineExecutingModule();',
+  '    __REACHABLE_PATH__._.undefineExecutingModule();',
   '  }',
   '};',
   '']).join('\n');
@@ -116,14 +116,9 @@ express or implied.   See the License for the specific language
 governing permissions and limitations under the License.
 */
 
-/**
- * a test to determine if this is the IE engine (needed
- * for source in eval commands)
- * @constant
- */
-var IS_IE = eval('/*@cc_on!@*/false');
-
 // sniffs and assigns UA tests
+var IS_IE = eval('/*@cc_on!@*/false');
+var IS_GK = false;
 (function () {
   var ua = navigator.userAgent.toLowerCase();
   if (ua.indexOf('gecko') !== -1) {
@@ -154,19 +149,6 @@ var LSCACHE_SCHEMA_VERSION_STRING = '!version';
  * @constant
  */
 var LSCACHE_APP_KEY_STRING = '!appCacheKey';
-
-/**
- * AMD modules that are deferred have this set
- * as their "arg[0]" as a way to flag
- * @constant
- */
-var AMD_DEFERRED = '###DEFERRED###';
-
-/**
- * the namespace for inject() that is publicly reachable
- * @constant
- */
-var NAMESPACE = 'Inject';
 
 /**
  * Regex for identifying things that end in *.js or *.txt
@@ -1603,7 +1585,7 @@ var Executor  = Fiber.extend(function() {
    * @param {Object} options - a collection of options
    */
   function executeJavaScriptModule(code, functionId) {
-    var meta = context.Inject.INTERNAL.executor[functionId];
+    var meta = resolveScope(self.env.config.reachablePath)._.executor[functionId];
     var module = meta.module;
     var failed = false;
     var sourceString = IS_IE ? '' : '//@ sourceURL=' + module.uri;
@@ -1635,7 +1617,7 @@ var Executor  = Fiber.extend(function() {
     // We only reach here if there are no parse errors
     // We can now evaluate using either the eval()
     // method or just running the function we built.
-    // if there is not a registered function in the INTERNAL namespace, there
+    // if there is not a registered function in the _ namespace, there
     // must have been a syntax error. Firefox mandates an eval to expose it, so
     // we use that as the least common denominator
     if (userConfig.debug.sourceMap) {
@@ -1658,8 +1640,8 @@ var Executor  = Fiber.extend(function() {
       // into result.__error internally for us from the commonjs harness
       // NOTE: these all receive "-1" due to the semicolon auto added by the Executor at the end of
       // the preamble.
-      // __EXCEPTION__.lineNumber - Inject.INTERNAL.modules.exec2.__error_line.lineNumber - 1
-      context.Inject.INTERNAL.executor[functionId].fn();
+      // __EXCEPTION__.lineNumber - Inject._.modules.exec2.__error_line.lineNumber - 1
+      resolveScope(self.env.config.reachablePath)._.executor[functionId].fn();
 
       if (module.__error) {
         module.__error.message = 'Runtime error in ' + module.id + '(' + module.uri + ') ' + module.__error.message;
@@ -1878,7 +1860,7 @@ var Executor  = Fiber.extend(function() {
 
       var functionId = 'exec' + (functionCount++);
       var localMeta = {};
-      context.Inject.INTERNAL.executor[functionId] = localMeta;
+      resolveScope(self.env.config.reachablePath)._.executor[functionId] = localMeta;
       
       localMeta.module = module;
       localMeta.require = RequireContext.createRequire(module.id, module.uri, module.qualifiedId);
@@ -1888,7 +1870,7 @@ var Executor  = Fiber.extend(function() {
         return text.replace(/__MODULE_ID__/g, module.id)
           .replace(/__MODULE_URI__/g, module.uri)
           .replace(/__FUNCTION_ID__/g, functionId)
-          .replace(/__INJECT_NS__/g, NAMESPACE);
+          .replace(/__REACHABLE_PATH__/g, self.env.config.reachablePath);
       }
 
       var header = swapUnderscoreVars(commonJSHeader);
@@ -1953,19 +1935,17 @@ var InjectContext;
           analyzer = new components.Analyzer();
         }
         
-        // configuration (shortcut using references)
-        this.config = {
-          moduleRoot: baseUrl,
-          suffixes: true,
-          sourceMaps: false
-        };
-      
-        // commonJS and AMD apis
-        this.api = {};
-      
-        // create all players used in this interaction
+        // where internal variables are stored
+        this._ = {};
+        
+        // create all environment objects used in this interaction
         this.env = {
-          config: this.config
+          config: {
+            moduleRoot: baseUrl,
+            suffixes: true,
+            sourceMaps: false,
+            reachablePath: null
+          }
         };
         this.env.analyzer = analyzer;
         this.env.communicator = communicator;
@@ -1979,8 +1959,8 @@ var InjectContext;
         }
         else {
           // create the require/define calls as part of the API
-          this.api.require = components.RequireContext.createRequire(this.env, baseUrl);
-          this.api.define = components.RequireContext.createDefine(this.env, baseUrl);
+          this.require = components.RequireContext.createRequire(this.env, baseUrl);
+          this.define = components.RequireContext.createDefine(this.env, baseUrl);
         }
 
       },
@@ -1997,10 +1977,10 @@ var InjectContext;
        * @return this
        */
       setModuleRoot: function(url) {
-        this.config.moduleRoot = url;
+        this.env.config.moduleRoot = url;
         this.env.requireContext = new components.RequireContext(this.env);
-        this.api.require = components.RequireContext.createRequire(this.env, url);
-        this.api.define = components.RequireContext.createDefine(this.env, url);
+        this.require = components.RequireContext.createRequire(this.env, url);
+        this.define = components.RequireContext.createDefine(this.env, url);
         return this;
       },
 
@@ -2012,11 +1992,24 @@ var InjectContext;
        */
       setCrossDomain: function(xdInfo) {
         if (typeof xdInfo == 'string') {
-          this.config.relayFile = xdInfo;
+          this.env.config.relayFile = xdInfo;
         }
         else {
-          this.config.relayFile = xdInfo.relayFile;
+          this.env.config.relayFile = xdInfo.relayFile;
         }
+        return this;
+      },
+      
+      /**
+       * Set the reachable path for this Inject instance. Every Inject instance needs to be
+       * reachable from the window scope. This is so the eval() step is able to properly
+       * register AMD modules and record functions into cache
+       * @method InjectContext#setReachablePath
+       * @param {String} path - the path from the window object from which to access this
+       * @return this
+       */
+      setReachablePath: function(path) {
+        this.env.config.reachablePath = path;
         return this;
       },
 
@@ -2029,7 +2022,7 @@ var InjectContext;
        * @return this
        */
       disableSuffixes: function() {
-        this.config.suffixes = false;
+        this.env.config.suffixes = false;
         return this;
       },
     
@@ -2042,7 +2035,7 @@ var InjectContext;
        * @return this
        */
       enableSuffixes: function() {
-        this.config.suffixes = true;
+        this.env.config.suffixes = true;
         return this;
       },
       
@@ -2057,7 +2050,7 @@ var InjectContext;
        * @return this
        */
       setExpires: function(seconds) {
-        this.config.expires = seconds || 0;
+        this.env.config.expires = seconds || 0;
         return this;
       },
       
@@ -2139,7 +2132,7 @@ var InjectContext;
        * @return this
        */
       enableAMDPlugins: function() {
-        this.config.amdPlugins = true;
+        this.env.config.amdPlugins = true;
         amdPluginBreakout(this.env);
         return this;
       },
@@ -2206,7 +2199,7 @@ var InjectContext;
        * @return this
        */
       enableSourceUrls: function() {
-        this.config.sourceUrls = true;
+        this.env.config.sourceUrls = true;
         return this;
       },
       
@@ -2218,7 +2211,7 @@ var InjectContext;
        * @return this
        */
       disableSourceUrls: function() {
-        this.config.sourceUrls = false;
+        this.env.config.sourceUrls = false;
         return this;
       },
     
@@ -2247,8 +2240,8 @@ var InjectContext;
 InjectContext.createContext = function(baseUrl) {
   var ic = new InjectContext(baseUrl);
   return {
-    require: ic.api.require,
-    define: ic.api.define,
+    require: ic.require,
+    define: ic.define,
     Inject: ic
   };
 };

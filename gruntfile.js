@@ -161,7 +161,7 @@ module.exports = function (grunt) {
         ]
       },
       plugins_to_plugins: {
-        files: [{expand: true, cwd: './plugins/', src: ['**'], dest: '<%= output_files.plugins %>'}]
+        files: [{expand: true, cwd: './src/plugins/', src: ['**'], dest: '<%= output_files.plugins %>'}]
       },
       recent_to_release: {
         expand: true,
