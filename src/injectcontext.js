@@ -213,7 +213,7 @@ var InjectContext;
       enableAMD: function() {
         this.define.amd = {};
         return this;
-      }
+      },
       
       // ======================================================================
       // rule based APIs
@@ -324,7 +324,7 @@ var InjectContext;
       }
     };
   });
-}(allComponents);
+}(allComponents));
 
 /**
  * Create a new InjectContext object, with an optional base url as the root
@@ -356,8 +356,8 @@ function allComponents() {
     RulesEngine: RulesEngine,
     TreeNode: TreeNode,
     TreeRunner: TreeRunner,
-    cache: (HAS_LOCAL_STORAGE && lscache) ? lscache : null)
-  }
+    cache: (HAS_LOCAL_STORAGE && lscache) ? lscache : null
+  };
 }
 
 /**
