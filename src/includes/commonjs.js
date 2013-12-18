@@ -32,13 +32,13 @@ governing permissions and limitations under the License.
     @global
 */
 var commonJSHeader = (['',
-  '__REACHABLE_PATH__._.executor.__FUNCTION_ID__.fn = function() {',
+  '__REACHABLE_PATH__.fn = function() {',
   '  with (window) {',
-  '    __REACHABLE_PATH__._.executor.__FUNCTION_ID__.innerFn = function() {',
+  '    __REACHABLE_PATH__.innerFn = function() {',
   '      // id: __MODULE_ID__ uri: __MODULE_URI__',
-  '      var module = __REACHABLE_PATH__._.executor.__FUNCTION_ID__.module,',
-  '          require = __REACHABLE_PATH__._.executor.__FUNCTION_ID__.require,',
-  '          define = __REACHABLE_PATH__._.executor.__FUNCTION_ID__.define,',
+  '      var module = __REACHABLE_PATH__.module,',
+  '          require = __REACHABLE_PATH__.require,',
+  '          define = __REACHABLE_PATH__.define,',
   '          exports = module.exports;',  
   '      try{module.undefined_function();}catch(e){module.__error_line = e;}' // NOTE: Must be on one line for clean error reporting
   ]).join('\n');
@@ -50,16 +50,16 @@ var commonJSHeader = (['',
     @global
 */
 var commonJSFooter = (['',
-  '      __REACHABLE_PATH__._.executor.__FUNCTION_ID__.module = module;',
+  '      __REACHABLE_PATH__.module = module;',
   '    };',
-  '    __REACHABLE_PATH__._.defineExecutingModuleAs("__MODULE_ID__", "__MODULE_URI__");',
+  '    __REACHABLE_PATH__.defineExecutingModuleAs("__MODULE_ID__", "__MODULE_URI__");',
   '    try {',
-  '      __REACHABLE_PATH__._.executor.__FUNCTION_ID__.innerFn.call(__REACHABLE_PATH__._.executor.__FUNCTION_ID__.module);',
+  '      __REACHABLE_PATH__.innerFn.call(__REACHABLE_PATH__.module);',
   '    }',
   '    catch (__EXCEPTION__) {',
-  '      __REACHABLE_PATH__._.executor.__FUNCTION_ID__.module.__error = __EXCEPTION__;',
+  '      __REACHABLE_PATH__.module.__error = __EXCEPTION__;',
   '    }',
-  '    __REACHABLE_PATH__._.undefineExecutingModule();',
+  '    __REACHABLE_PATH__.undefineExecutingModule();',
   '  }',
   '};',
   '']).join('\n');

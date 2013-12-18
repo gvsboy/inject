@@ -268,6 +268,36 @@ var Executor  = Fiber.extend(function() {
       return stack;
     }
   };
+  
+  /**
+   * Creates a globally accessible object for eval purposes
+   * This allows eval to work in the window scope, while still having
+   * access to the local executor for module references
+   * @function
+   * @param {String} guid - a unique ID
+   * @param {Executor} executor - an executor object for scoping purposes
+   * @return {Object}
+   */
+  function createGlobalObject(guid, executor) {
+    window[guid] = {
+      defineExecutingModuleAs: function() {
+        executor.defineExecutingModuleAs.apply(executor, arguments);
+      },
+      undefineExecutingModule: function() {
+        executor.undefineExecutingModule.apply(executor, arguments);
+      }
+    };
+    return window[guid];
+  }
+  
+  /**
+   * Delete a globally accessible object used by executor
+   * @function
+   * @param {String} guid - a unique ID
+   */
+  function removeGlobalObject(guid) {
+    delete window[guid];
+  }
 
   /**
    * execute a javascript module after wrapping it in sandbox code
@@ -285,8 +315,8 @@ var Executor  = Fiber.extend(function() {
    * @param {String} code - the code to execute
    * @param {Object} options - a collection of options
    */
-  function executeJavaScriptModule(code, functionId) {
-    var meta = resolveScope(self.env.config.reachablePath)._.executor[functionId];
+  function executeJavaScriptModule(globalObject, env, code, functionId) {
+    var meta = globalObject[functionId];
     var module = meta.module;
     var failed = false;
     var sourceString = IS_IE ? '' : '//@ sourceURL=' + module.uri;
@@ -321,7 +351,7 @@ var Executor  = Fiber.extend(function() {
     // if there is not a registered function in the _ namespace, there
     // must have been a syntax error. Firefox mandates an eval to expose it, so
     // we use that as the least common denominator
-    if (userConfig.debug.sourceMap) {
+    if (env.config.sourceUrls) {
       // if sourceMap is enabled
       // create a version of our code that can be put through eval with the
       // sourcemap string enabled. This allows some browsers (Chrome and Firefox)
@@ -342,7 +372,7 @@ var Executor  = Fiber.extend(function() {
       // NOTE: these all receive "-1" due to the semicolon auto added by the Executor at the end of
       // the preamble.
       // __EXCEPTION__.lineNumber - Inject._.modules.exec2.__error_line.lineNumber - 1
-      resolveScope(self.env.config.reachablePath)._.executor[functionId].fn();
+      globalObject.fn();
 
       if (module.__error) {
         module.__error.message = 'Runtime error in ' + module.id + '(' + module.uri + ') ' + module.__error.message;
@@ -422,7 +452,7 @@ var Executor  = Fiber.extend(function() {
      * @returns {Object} module at the ID or alias
      */
     getFromCache : function(idAlias) {
-      var alias = RulesEngine.getOriginalName(idAlias);
+      var alias = this.env.rulesEngine.getOriginalName(idAlias);
       var err;
       var errorMessage;
       var e;
@@ -560,25 +590,25 @@ var Executor  = Fiber.extend(function() {
       debugLog('Executor', 'executing ' + module.uri);
 
       var functionId = 'exec' + (functionCount++);
-      var localMeta = {};
-      resolveScope(self.env.config.reachablePath)._.executor[functionId] = localMeta;
+      var globalPath = this.env.config.instance + '_' + functionId;
+      var globalObject = createGlobalObject(globalPath);
       
-      localMeta.module = module;
-      localMeta.require = RequireContext.createRequire(module.id, module.uri, module.qualifiedId);
-      localMeta.define = RequireContext.createInlineDefine(module, localMeta.require);
+      globalObject.module = module;
+      globalObject.require = RequireContext.createRequire(module.id, module.uri, module.qualifiedId);
+      globalObject.define = RequireContext.createInlineDefine(module, globalObject.require);
 
       function swapUnderscoreVars(text) {
         return text.replace(/__MODULE_ID__/g, module.id)
           .replace(/__MODULE_URI__/g, module.uri)
           .replace(/__FUNCTION_ID__/g, functionId)
-          .replace(/__REACHABLE_PATH__/g, self.env.config.reachablePath);
+          .replace(/__REACHABLE_PATH__/g, globalPath);
       }
 
       var header = swapUnderscoreVars(commonJSHeader);
       var footer = swapUnderscoreVars(commonJSFooter);
       var runCommand = ([header, ';', code, footer]).join('\n');
 
-      executeJavaScriptModule(runCommand, functionId);
+      executeJavaScriptModule(globalObject, this.env, runCommand, functionId);
 
       // if a global error object was created
       if (module.__error) {
@@ -587,6 +617,8 @@ var Executor  = Fiber.extend(function() {
         debugLog('Executor', 'broken', module.id, module.uri, module.exports);
         this.errors[module.id] = module.__error;
       }
+      
+      removeGlobalObject(globalPath);
 
       debugLog('Executor', 'executed', module.id, module.uri, module.exports);
     }

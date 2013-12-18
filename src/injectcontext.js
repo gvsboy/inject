@@ -51,6 +51,9 @@ var InjectContext;
             suffixes: true,
             sourceMaps: false,
             reachablePath: null
+          },
+          instance: {
+            id: guid()
           }
         };
         this.env.analyzer = analyzer;
