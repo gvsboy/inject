@@ -30,12 +30,12 @@ Get this release over at the [downloads](/download) page
 * CommonJS Scan does not occur if dependencies are set
 
 ## Tickets From This Release
-* [\#213](https://github.com/linkedin/inject/pull/#213) Component JSON for Bower
-* [\#217](https://github.com/linkedin/inject/pull/#217) Remote localStorage Cache
-* [\#226](https://github.com/linkedin/inject/pull/#226) Default cache life is now 0
-* [\#234](https://github.com/linkedin/inject/pull/#234) CommonJS Scan does not occur if dependencies are set
-* [\#238](https://github.com/linkedin/inject/pull/#238) dividing addRule into multiple methods
-* [\#244](https://github.com/linkedin/inject/pull/#244) Inject config to disable global AMD
-* [\#246](https://github.com/linkedin/inject/pull/#246) Removal of before/after pointcuts
-* [\#248](https://github.com/linkedin/inject/pull/#248) grunt "release" task to make tar+gzip
-* [\#256](https://github.com/linkedin/inject/pull/#256) Fix css Plugin in IE7
+* [\#213](https://github.com/linkedin/inject/pull/213) Component JSON for Bower
+* [\#217](https://github.com/linkedin/inject/pull/217) Remote localStorage Cache
+* [\#226](https://github.com/linkedin/inject/pull/226) Default cache life is now 0
+* [\#234](https://github.com/linkedin/inject/pull/234) CommonJS Scan does not occur if dependencies are set
+* [\#238](https://github.com/linkedin/inject/pull/238) dividing addRule into multiple methods
+* [\#244](https://github.com/linkedin/inject/pull/244) Inject config to disable global AMD
+* [\#246](https://github.com/linkedin/inject/pull/246) Removal of before/after pointcuts
+* [\#248](https://github.com/linkedin/inject/pull/248) grunt "release" task to make tar+gzip
+* [\#256](https://github.com/linkedin/inject/pull/256) Fix css Plugin in IE7
